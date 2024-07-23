@@ -11,6 +11,7 @@
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
 
   <depend>action_msgs</depend>
+  <depend>sensor_msgs</depend>
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_srvs</exec_depend>

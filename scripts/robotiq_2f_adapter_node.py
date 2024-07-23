@@ -36,6 +36,9 @@ from robotiq_2f_urcap_adapter_socket.robotiq_2f_socket_adapter import ObjectStat
 from robotiq_2f_urcap_adapter_socket.robotiq_2f_socket_adapter import Robotiq2fSocketAdapter
 
 
+from sensor_msgs.msg import JointState
+
+
 class Robotiq2fAdapterNode(Node):
     """ROS node offering ROS actions to control a Robotq2f gripper using string commands."""
 
@@ -123,6 +126,18 @@ class Robotiq2fAdapterNode(Node):
                 description="Minimum effort (N) which the gripper excert."
             )
         )
+
+        self.publisher_ = self.create_publisher(JointState, 'my_joint_states', 10)
+        self.joint_names = [
+            'robotiq_85_left_knuckle_joint',
+            'robotiq_85_right_knuckle_joint',
+            'robotiq_85_left_inner_knuckle_joint',
+            'robotiq_85_right_inner_knuckle_joint',
+            'robotiq_85_left_finger_tip_joint',
+            'robotiq_85_right_finger_tip_joint'
+        ]
+
+        self.timer = self.create_timer(1.0, self.timer_callback)
 
         try:
 
@@ -494,6 +509,29 @@ class Robotiq2fAdapterNode(Node):
             max_speed_m_s=goal.command.max_speed
         )
 
+    def publish_update_joint_state(self, pos):
+        joint_state_msg = JointState()
+        joint_state_msg.header.stamp = self.get_clock().now().to_msg()
+        joint_state_msg.name = self.joint_names
+        joint_state_msg.position = [0.0] * len(self.joint_names)
+        joint_state_msg.position[0] = pos
+        joint_state_msg.position[1] = -pos
+        joint_state_msg.position[2] = pos
+        joint_state_msg.position[3] = -pos
+        joint_state_msg.position[4] = -pos
+        joint_state_msg.position[5] = pos
+        joint_state_msg.velocity = [0.0] * len(self.joint_names)
+        joint_state_msg.effort = [0.0] * len(self.joint_names)
+        
+        self.publisher_.publish(joint_state_msg)
+        #self.get_logger().info(f'Published joint states with position: {pos}')
+    
+    def timer_callback(self):
+        position = self.gripper_adapter.position / 255
+
+        self.publish_update_joint_state(position)
+
+    
 
 def main(args=None):
     """
