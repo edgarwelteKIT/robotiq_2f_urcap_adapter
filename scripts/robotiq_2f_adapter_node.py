@@ -127,7 +127,7 @@ class Robotiq2fAdapterNode(Node):
             )
         )
 
-        self.publisher_ = self.create_publisher(JointState, 'my_joint_states', 10)
+        self.publisher_ = self.create_publisher(JointState, 'joint_states', 10)
         self.joint_names = [
             'robotiq_85_left_knuckle_joint',
             'robotiq_85_right_knuckle_joint',
@@ -527,7 +527,7 @@ class Robotiq2fAdapterNode(Node):
         #self.get_logger().info(f'Published joint states with position: {pos}')
     
     def timer_callback(self):
-        position = self.gripper_adapter.position / 255
+        position = self.gripper_adapter.position / 255 * 0.8
 
         self.publish_update_joint_state(position)
 
