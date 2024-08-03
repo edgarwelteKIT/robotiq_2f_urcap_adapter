@@ -324,6 +324,27 @@ class Robotiq2fAdapterNode(Node):
             self._normalized_grip_width_baseline -
             (normalized_position * self._normalized_grip_width_factor)
             )
+    
+    def __radians_value_from_normalized_position(self, normalized_position: int) -> float:
+        """
+        Calculate the joint position in rad from the normalized joint position values.
+
+        This calculation is dependent on the maximum and minimum joint position values of the robot.
+
+        :param normalized_value: The joint position normalized to the range of 0-255 dependent on the
+        robots limits.
+        :type normalized_value: int
+        :raises ValueError: If the provided normalized joint position is out of the range of 0-255,
+        this error is raised.
+        :return: The joint position value in rad.
+        :rtype: float
+        """
+        if normalized_position < 0 or normalized_position > 255:
+            raise ValueError("Normalized joint position should be in the range of [0, 255]")
+
+        return float(
+            (normalized_position * 0.8 / 255)
+            )
 
     def __normalized_grip_width_value_from_m(self, m: float) -> int:
         """
@@ -352,12 +373,167 @@ class Robotiq2fAdapterNode(Node):
         return int(
             (self._normalized_grip_width_baseline - m) / self._normalized_grip_width_factor
             )
+    
+    def __normalized_position_value_from_radians(self, rad: float) -> int:
+        """
+        Calculate a normalized joint position [0-255] from joint position in rad.
+
+        This calculation is dependent on the maximum and minimum joint position of the robot.
+
+        :param rad: The joint position value to be transformed into a normalized format.
+        This value should be within the maximum and minimum values for the gripper.
+        :type rad: float
+        :raises ValueError: If the provided rad joint position is not within the limits of the gripper
+        this error is raised.
+        :return: The normalized joint position value [0-255] calculated from the rad input parameter.
+        :rtype: int
+        """
+        if rad < self.__radians_value_from_normalized_position(0) \
+                or rad > self.__radians_value_from_normalized_position(255):
+            raise ValueError(
+                f"Provided joint position {rad} in rad exceeds limits ["
+                f"{self.__radians_value_from_normalized_position(0)}, "
+                f"{self.__radians_value_from_normalized_position(255)}] "
+                f"of the gripper. Validate that the provided joint position is"
+                f"within the specs of the gripper!"
+                )
+
+        return int(
+            (rad / 0.8) * 255
+            )
 
     def disconnect(self):
         """Disconnect from the URCAP socket."""
         # self.get_logger().info("Disconnecting from URCAP!")
         self.gripper_adapter.disconnect()
         time.sleep(0.01)
+
+    def __move_gripper_to_joint_position(self, goal_handle,
+                                        joint_position_rad: float,
+                                        max_effort_N: float,
+                                        max_speed_m_s: float = 0.15
+                                        ) -> GripperCommandAction.Result:
+        try:
+            target_position_normalized = self.__normalized_position_value_from_radians(joint_position_rad)
+            normalized_speed = self.__normalized_speed_value_from_m_s(max_speed_m_s)
+            normalized_effort = self.__normalized_effort_value_from_newton(max_effort_N)
+        except ValueError as exc:
+            self.get_logger().error(
+                f"Failed to convert goal values into normalized values for the gripper: {exc}"
+                )
+            goal_handle.abort()
+            return GripperCommandAction.Result(
+                position=self.__radians_value_from_normalized_position(self.gripper_adapter.position),
+                effort=0.0,
+                stalled=False,
+                reached_goal=False
+            )
+        
+        if self.gripper_adapter.position == target_position_normalized:
+            goal_handle.succeed()
+            return GripperCommandAction.Result(
+                position=joint_position_rad,
+                effort=0.0,
+                stalled=False,
+                reached_goal=True
+            )
+        
+        set_ok, cmd_pos = self.gripper_adapter.move(
+            position=target_position_normalized,
+            speed=normalized_speed,
+            force=normalized_effort
+        )
+
+        if not set_ok:
+            goal_handle.abort()
+            return GripperCommandAction.Result(
+                position=self.__radians_value_from_normalized_position(self.gripper_adapter.position),
+                effort=0.0,
+                stalled=False,
+                reached_goal=False
+            )
+        
+        prev_position = self.gripper_adapter.position
+        while self.gripper_adapter.get_gripper_variable(self.gripper_adapter.PRE) != cmd_pos:
+            position = self.gripper_adapter.position
+            if prev_position != position:
+                prev_position = position
+
+                goal_handle.publish_feedback(
+                    GripperCommandAction.Feedback(
+                        position=self.__radians_value_from_normalized_position(prev_position),
+                        effort=self.__newton_value_from_normalized_effort(
+                            self.gripper_adapter.force
+                            ),
+                        stalled=False,
+                        reached_goal=False
+                    )
+                )
+            time.sleep(0.001)
+
+        # wait until not moving
+        object_status = ObjectStatus(
+                self.gripper_adapter.get_gripper_variable(self.gripper_adapter.OBJ)
+                )
+        
+        prev_position = self.gripper_adapter.position
+        prev_effort = self.gripper_adapter.force
+        prev_speed = self.gripper_adapter.speed
+        
+
+        while object_status == ObjectStatus.MOVING:
+            object_status = ObjectStatus(
+                self.gripper_adapter.get_gripper_variable(self.gripper_adapter.OBJ)
+                )
+            
+            position = self.gripper_adapter.position
+            effort = self.gripper_adapter.force
+            speed = self.gripper_adapter.speed
+
+            if (position != prev_position) or (effort != prev_effort) or (speed != prev_speed):
+                prev_position = position
+                prev_effort = effort
+                prev_speed = speed
+
+                goal_handle.publish_feedback(
+                    GripperCommandAction.Feedback(
+                        position=self.__radians_value_from_normalized_position(prev_position),
+                        effort=self.__newton_value_from_normalized_effort(prev_effort),
+                        stalled=False,
+                        reached_goal=False
+                    )
+                )
+
+        if object_status == ObjectStatus.AT_DEST:
+            goal_handle.succeed()
+            return GripperCommandAction.Result(
+                position=self.__radians_value_from_normalized_position(self.gripper_adapter.position),
+                effort=self.__newton_value_from_normalized_effort(self.gripper_adapter.force),
+                stalled=False,
+                reached_goal=True
+            )
+        
+        if object_status in {
+                ObjectStatus.MOVING,
+                ObjectStatus.STOPPED_INNER_OBJECT,
+                ObjectStatus.STOPPED_OUTER_OBJECT
+        }:
+            goal_handle.abort()
+
+            return GripperCommandAction.Result(
+                position=self.__radians_value_from_normalized_position(self.gripper_adapter.position),
+                effort=self.__newton_value_from_normalized_effort(self.gripper_adapter.force),
+                stalled=True,
+                reached_goal=False
+            )
+        goal_handle.abort()
+        return GripperCommandAction.Result(
+                position=self.__radians_value_from_normalized_position(self.gripper_adapter.position),
+                effort=self.__newton_value_from_normalized_effort(prev_effort),
+                stalled=False,
+                reached_goal=False
+            )
+        
 
     def __move_gripper_to_grip_width(self, goal_handle,
                                      grip_width_m: float,
@@ -496,12 +672,17 @@ class Robotiq2fAdapterNode(Node):
 
         self.get_logger().info(f"Received goal: {goal.command.position}, {goal.command.max_effort}")
 
-
-        return self.__move_gripper_to_grip_width(
+        return self.__move_gripper_to_joint_position(
             goal_handle=goal_handle,
-            grip_width_m=goal.command.position,
+            joint_position_rad=goal.command.position,
             max_effort_N=goal.command.max_effort
         )
+
+        #return self.__move_gripper_to_grip_width(
+        #    goal_handle=goal_handle,
+        #    grip_width_m=goal.command.position,
+        #    max_effort_N=goal.command.max_effort
+        #)
 
     def publish_update_joint_state(self, pos):
         """
