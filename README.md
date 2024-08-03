@@ -75,10 +75,32 @@ ros2 run robotiq_2f_urcap_adapter robotiq_2f_adapter_node.py --ros-args -p robot
 
 Close the gripper:
 ```
-ros2 action send_goal -f /robotiq_2f_urcap_adapter/gripper_command robotiq_2f_urcap_adapter/GripperCommand '{ command: { position: 0.0, max_effort: 140, max_speed: 0.15 }}
+ros2 action send_goal -f /robotiq_2f_urcap_adapter/gripper_command control_msgs/GripperCommand '{ command: { position: 0.0, max_effort: 140 }}
 ```
 
 Open the gripper (assuming it's a 2F-85):
 ```
-ros2 action send_goal -f /robotiq_2f_urcap_adapter/gripper_command robotiq_2f_urcap_adapter/GripperCommand '{ command: { position: 0.085, max_effort: 140, max_speed: 0.15 }}'
+ros2 action send_goal -f /robotiq_2f_urcap_adapter/gripper_command control_msgs/GripperCommand '{ command: { position: 0.085, max_effort: 140 }}'
+```
+
+### Mock Gripper
+
+To test this adapter you can start a mock server which emulates the gripper. 
+
+Please start therefore first the server:
+
+```
+ros2 run robotiq_2f_urcap_adapter robotiq_2f_mock_server.py
+```
+
+Then start the adapter:
+
+```
+ros2 run robotiq_2f_urcap_adapter robotiq_2f_adapter_node.py --ros-args -p robot_ip:=127.0.0.1
+```
+
+You can also start both command with configured parameters with this launch file:
+
+```
+ros2 launch robotiq_2f_urcap_adapter robotiq_2f85_urcap_adapter+mock_launch.py
 ```

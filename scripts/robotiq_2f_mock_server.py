@@ -1,4 +1,6 @@
+#!/usr/bin/env python3
 import socket
+import rclpy
 
 def start_server(host='localhost', port=63352):
     # Create a socket object
@@ -74,4 +76,8 @@ def start_server(host='localhost', port=63352):
         server_socket.close()
 
 if __name__ == "__main__":
+
+    rclpy.init(args=None)
+    node = rclpy.create_node('robotiq_2f_mock_server')
     start_server()
+
