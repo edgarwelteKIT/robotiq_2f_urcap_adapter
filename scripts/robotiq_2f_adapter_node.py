@@ -510,6 +510,11 @@ class Robotiq2fAdapterNode(Node):
         )
 
     def publish_update_joint_state(self, pos):
+        """
+        Publish the current joint state of the gripper.
+
+        :param pos: The position of the gripper in rad.
+        """
         joint_state_msg = JointState()
         joint_state_msg.header.stamp = self.get_clock().now().to_msg()
         joint_state_msg.name = self.joint_names
@@ -527,6 +532,9 @@ class Robotiq2fAdapterNode(Node):
         #self.get_logger().info(f'Published joint states with position: {pos}')
     
     def timer_callback(self):
+        """
+        Timer callback to regulary update the joint state of the gripper.
+        """
         position = self.gripper_adapter.position / 255 * 0.8
 
         self.publish_update_joint_state(position)
