@@ -12,6 +12,7 @@
 
   <depend>action_msgs</depend>
   <depend>sensor_msgs</depend>
+  <depend>control_msgs</depend>
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_srvs</exec_depend>
