@@ -28,6 +28,7 @@ ament_python_install_package(${PROJECT_NAME}_socket)
 # Install Python executables
 install(PROGRAMS
   scripts/robotiq_2f_adapter_node.py
+  scripts/robotiq_2f_mock_server.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
