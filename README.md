@@ -70,7 +70,7 @@ The node currently has the following parameters:
 Start the node:
 
 ```
-ros2 run robotiq_2f_urcap_adapter robotiq_2f_adapter_node.py --ros-args -p robot_ip:=192.168.0.4
+ros2 run robotiq_2f_urcap_adapter robotiq_2f_adapter_node.py --ros-args -p robot_ip:=192.168.1.102
 ```
 
 Close the gripper:
