@@ -75,12 +75,12 @@ ros2 run robotiq_2f_urcap_adapter robotiq_2f_adapter_node.py --ros-args -p robot
 
 Close the gripper:
 ```
-ros2 action send_goal -f /robotiq_2f_urcap_adapter/gripper_command control_msgs/GripperCommand '{ command: { position: 0.0, max_effort: 140 }}
+ros2 action send_goal -f /robotiq_2f_urcap_adapter/gripper_command control_msgs/GripperCommand '{ command: { position: 0.8, max_effort: 140 }}
 ```
 
 Open the gripper (assuming it's a 2F-85):
 ```
-ros2 action send_goal -f /robotiq_2f_urcap_adapter/gripper_command control_msgs/GripperCommand '{ command: { position: 0.085, max_effort: 140 }}'
+ros2 action send_goal -f /robotiq_2f_urcap_adapter/gripper_command control_msgs/GripperCommand '{ command: { position: 0.0, max_effort: 140 }}'
 ```
 
 ### Mock Gripper
