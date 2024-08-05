@@ -199,13 +199,13 @@ class Robotiq2fAdapterNode(Node):
             (max_gripper_width_m - min_gripper_width_m) / 255
         self._normalized_grip_width_baseline = max_gripper_width_m
 
-        min_position_m = \
-            self.__m_value_from_normalized_grip_width(self.gripper_adapter.min_position)
-        max_position_m = \
-            self.__m_value_from_normalized_grip_width(self.gripper_adapter.max_position)
+        min_position_rad = \
+            self.__radians_value_from_normalized_position(self.gripper_adapter.min_position)
+        max_position_rad = \
+            self.__radians_value_from_normalized_position(self.gripper_adapter.max_position)
 
         self.get_logger().info(
-            f"Grip range reported by autocalibration: [{min_position_m}, {max_position_m}]"
+            f"Grip range reported by autocalibration: [{min_position_rad}, {max_position_rad}]"
             )
 
         self._normalized_effort_factor = (max_gripper_force_N - min_gripper_force_N) / 255
