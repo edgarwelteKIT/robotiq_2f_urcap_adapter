@@ -6,9 +6,11 @@
 # received commands.
 
 import socket
+
 import rclpy
 
-def start_server(host='localhost', port=63352):
+
+def start_server(host="localhost", port=63352):
     # Create a socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -19,7 +21,7 @@ def start_server(host='localhost', port=63352):
     server_socket.listen(5)
     print(f"Server started and listening on {host}:{port}")
 
-     # Dictionary to hold register values
+    # Dictionary to hold register values
     registers = {}
 
     try:
@@ -27,7 +29,7 @@ def start_server(host='localhost', port=63352):
             # Accept a client connection
             client_socket, client_address = server_socket.accept()
             print(f"Connection from {client_address} has been established.")
-            
+
             while True:
 
                 if registers.get("ACT", "0") == "1":
@@ -36,11 +38,11 @@ def start_server(host='localhost', port=63352):
                     registers["OBJ"] = "3"
 
                 # Receive data from the client
-                data = client_socket.recv(1024).decode('utf-8')
+                data = client_socket.recv(1024).decode("utf-8")
                 if not data:
                     break  # No more data from client, break the loop
-                
-                #print(f"Received data: {data}")
+
+                # print(f"Received data: {data}")
 
                 parts = data.split()
                 if len(parts) < 2:
@@ -50,7 +52,9 @@ def start_server(host='localhost', port=63352):
                     register = parts[1]
 
                     if command == "GET":
-                        value = registers.get(register, "0")  # Return '0' if register is not found
+                        value = registers.get(
+                            register, "0"
+                        )  # Return '0' if register is not found
                         response = f"{register} {value}"
                     elif command == "SET":
                         if len(parts) % 2 == 0:
@@ -67,10 +71,10 @@ def start_server(host='localhost', port=63352):
                     else:
                         response = "Invalid command"
 
-                #print(f"Sending response: {response}")
+                # print(f"Sending response: {response}")
                 # Send response to the client
-                client_socket.sendall(response.encode('utf-8'))
-            
+                client_socket.sendall(response.encode("utf-8"))
+
             # Close the client connection after the client has finished sending data
             client_socket.close()
             print(f"Connection with {client_address} closed.")
@@ -81,9 +85,9 @@ def start_server(host='localhost', port=63352):
         # Close the server socket
         server_socket.close()
 
+
 if __name__ == "__main__":
 
     rclpy.init(args=None)
-    node = rclpy.create_node('robotiq_2f_mock_server')
+    node = rclpy.create_node("robotiq_2f_mock_server")
     start_server()
-
