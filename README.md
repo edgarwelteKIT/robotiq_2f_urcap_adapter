@@ -28,7 +28,7 @@ The user also has to set the IP address (`robot_ip`) of the robot.
 
 4) When starting the `robotiq_2f_urcap_adapter` node the gripper will activate, if not already activated, and auto-calibrate its movement range.
 
-5) The gripper can then be controlled using ROS actions using the `robotiq_2f_urcap_adapter/GripperControl` action.
+5) The gripper can then be controlled using ROS actions using the `robotiq_2f_urcap_adapter/gripper_command` action.
 
 ## Parameters
 The node currently has the following parameters:
@@ -65,8 +65,11 @@ The node currently has the following parameters:
   [specification](https://robotiq.com/products/2f85-140-adaptive-robot-gripper?ref=nav_product_new_button)
   for details on the value range. Requested forces lower than this will be rejected.
   (*default: 20*)
+- **`action_server_name`**:
+  The name of the action server.
+  (*default: "robotiq_2f_urcap_adapter/gripper_command"*)
 
-## Example
+## Usage
 Start the node:
 
 ```
@@ -83,7 +86,19 @@ Open the gripper (assuming it's a 2F-85):
 ros2 action send_goal -f /robotiq_2f_urcap_adapter/gripper_command control_msgs/GripperCommand '{ command: { position: 0.0, max_effort: 140 }}'
 ```
 
-### Mock Gripper
+## Action Client Example (Python)
+
+A simple example of an action client (Python) to control the gripper is provided in the `examples` folder. To run it, first start the adapter node and then run the example script:
+
+```bash
+ros2 run robotiq_2f_urcap_adapter robotiq_2f_adapter_node.py --ros-args -p robot_ip:=192.168.1.102
+
+ros2 run robotiq_2f_urcap_adapter gripper_action_client.py
+```
+
+
+
+## Mock Gripper
 
 To test this adapter you can start a mock server which emulates the gripper. 
 
