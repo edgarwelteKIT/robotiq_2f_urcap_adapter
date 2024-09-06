@@ -47,13 +47,6 @@ class Robotiq2fAdapterNode(Node):
 
         self.get_logger().info("Gripper control via urcap setting up!")
 
-        self._action_server = ActionServer(
-            self,
-            GripperCommandAction,
-            "~/gripper_command",
-            self.execute_callback
-        )
-
         self.declare_parameter(
             name="robot_ip",
             value="192.168.0.104",
@@ -121,23 +114,21 @@ class Robotiq2fAdapterNode(Node):
             name="min_gripper_force",
             value=20.0,
             descriptor=ParameterDescriptor(
-                name="max_gripper_force",
+                name="min_gripper_force",
                 type=ParameterType.PARAMETER_DOUBLE,
                 description="Minimum effort (N) which the gripper excert."
             )
         )
-
-        self.publisher_ = self.create_publisher(JointState, 'joint_states', 10)
-        self.joint_names = [
-            'robotiq_85_left_knuckle_joint',
-            'robotiq_85_right_knuckle_joint',
-            'robotiq_85_left_inner_knuckle_joint',
-            'robotiq_85_right_inner_knuckle_joint',
-            'robotiq_85_left_finger_tip_joint',
-            'robotiq_85_right_finger_tip_joint'
-        ]
-
-        self.timer = self.create_timer(1.0, self.timer_callback)
+        
+        self.declare_parameter(
+            name="action_server_name",
+            value="robotiq_2f_urcap_adapter/gripper_command",
+            descriptor=ParameterDescriptor(
+                name="action_server_name",
+                type=ParameterType.PARAMETER_STRING,
+                description="Name of the action server."
+            )
+        )
 
         try:
 
@@ -175,6 +166,10 @@ class Robotiq2fAdapterNode(Node):
             if min_gripper_force_N is None:
                 raise ParameterUninitializedException(parameter_name="min_gripper_force")
 
+            action_server_name: Optional[str] = self.get_parameter("action_server_name").value
+            if action_server_name is None:
+                raise ParameterUninitializedException(parameter_name="action_server_name")
+
         except ParameterNotDeclaredException as exc:
             self.get_logger().error(f"Parameter not declated: {exc}")
             raise RuntimeError() from exc
@@ -182,6 +177,25 @@ class Robotiq2fAdapterNode(Node):
             self.get_logger().error(f"Parameter uninitialized: {exc}")
             raise RuntimeError() from exc\
 
+        self._action_server = ActionServer(
+            self,
+            GripperCommandAction,
+            action_server_name,
+            self.execute_callback
+        )
+
+        self.publisher_ = self.create_publisher(JointState, 'joint_states', 10)
+        self.joint_names = [
+            'robotiq_85_left_knuckle_joint',
+            'robotiq_85_right_knuckle_joint',
+            'robotiq_85_left_inner_knuckle_joint',
+            'robotiq_85_right_inner_knuckle_joint',
+            'robotiq_85_left_finger_tip_joint',
+            'robotiq_85_right_finger_tip_joint'
+        ]
+
+        self.timer = self.create_timer(0.1, self.timer_callback)
+        
         self.get_logger().info(f"Connecting to URCAP on {robot_ip}:{robot_port}!")
 
         self.gripper_adapter: Robotiq2fSocketAdapter = Robotiq2fSocketAdapter()
@@ -661,12 +675,13 @@ class Robotiq2fAdapterNode(Node):
                 reached_goal=False
             )
 
-    def execute_callback(self, goal_handle):
+    def execute_callback(self, goal_handle) -> GripperCommandAction.Result:
         """
         Run the callback to move the robotiq gripper with ros actions.
 
         :param goal_handle: ROS action server goal handle.
-        :return MoveGripper.Result containing the result of the execution.
+        :return:  containing the result of the execution.
+        :rtype: GripperCommandAction.Result
         """
         goal: GripperCommandAction.Goal = goal_handle.request
 

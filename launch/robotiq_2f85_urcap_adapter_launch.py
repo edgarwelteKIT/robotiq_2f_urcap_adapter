@@ -47,6 +47,7 @@ def generate_launch_description():
                 "min_gripper_speed": 0.02,
                 "max_gripper_force": 235.0,
                 "min_gripper_force": 20.0,
+                "action_server_name": "robotiq_2f_urcap_adapter/gripper_command",
             }]
         )
     return LaunchDescription([
