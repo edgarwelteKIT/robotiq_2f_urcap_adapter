@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+
+# This script is a mock server for the Robotiq 2F gripper. It listens for incoming connections from a client and
+# processes the commands sent by the client. The server responds to the client with the requested data or an
+# acknowledgment message. It also simulates the gripper's behavior by updating the register values based on the
+# received commands.
+
 import socket
 import rclpy
 
