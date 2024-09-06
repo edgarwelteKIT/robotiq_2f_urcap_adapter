@@ -5,13 +5,6 @@ project(robotiq_2f_urcap_adapter)
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-# Build actions
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "action/MoveGripper.action"
-  "action/GripperCommand.action"
-  "msg/GripperCommand.msg"
-)
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
@@ -29,6 +22,7 @@ ament_python_install_package(${PROJECT_NAME}_socket)
 install(PROGRAMS
   scripts/robotiq_2f_adapter_node.py
   scripts/robotiq_2f_mock_server.py
+  examples/scripts/gripper_action_client.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
