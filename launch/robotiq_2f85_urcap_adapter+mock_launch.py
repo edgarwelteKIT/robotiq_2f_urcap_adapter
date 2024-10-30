@@ -34,36 +34,31 @@ def generate_launch_description():
     )
 
     robotiq_2f_urcap_adapter_node = Node(
-            package='robotiq_2f_urcap_adapter',
-            executable='robotiq_2f_adapter_node.py',
-            name='robotiq_2f_urcap_adapter',
-            parameters=[{
-                "robot_ip": LaunchConfiguration('robot_ip'),
-                "robot_port": LaunchConfiguration('robot_port'),
-                "max_gripper_width": 0.085,
-                "min_gripper_width": 0.0,
-                "max_gripper_speed": 0.15,
-                "min_gripper_speed": 0.02,
-                "max_gripper_force": 235.0,
-                "min_gripper_force": 20.0,
-            }]
-        )
+        package='robotiq_2f_urcap_adapter',
+        executable='robotiq_2f_adapter_node.py',
+        name='robotiq_2f_urcap_adapter',
+        parameters=[{
+            "robot_ip": LaunchConfiguration('robot_ip'),
+            "robot_port": LaunchConfiguration('robot_port'),
+            "max_gripper_width": 0.085,
+            "min_gripper_width": 0.0,
+            "max_gripper_speed": 0.15,
+            "min_gripper_speed": 0.02,
+            "max_gripper_force": 235.0,
+            "min_gripper_force": 20.0,
+        }]
+    )
     
     robotiq_2f_mock_server_node = Node(
-            package='robotiq_2f_urcap_adapter',
-            executable='robotiq_2f_mock_server.py',
-            name='robotiq_2f85_mock_server'
-    )
-
-    delayed_node = TimerAction(
-        period=1.0,
-        actions=[robotiq_2f_urcap_adapter_node]
+        package='robotiq_2f_urcap_adapter',
+        executable='robotiq_2f_mock_server.py',
+        name='robotiq_2f85_mock_server'
     )
 
 
     return LaunchDescription([
         robot_ip_launch_arg,
         robot_port_launch_arg,
-        delayed_node,
+        robotiq_2f_urcap_adapter_node,
         robotiq_2f_mock_server_node
     ])
