@@ -31,12 +31,15 @@ from rclpy.node import Node, ParameterDescriptor, ParameterType,\
     ParameterNotDeclaredException, ParameterUninitializedException
 
 from control_msgs.action import GripperCommand as GripperCommandAction
+from control_msgs.msg import GripperCommand
 
 from robotiq_2f_urcap_adapter_socket.robotiq_2f_socket_adapter import ObjectStatus
 from robotiq_2f_urcap_adapter_socket.robotiq_2f_socket_adapter import Robotiq2fSocketAdapter
 
 
 from sensor_msgs.msg import JointState
+
+
 
 
 class Robotiq2fAdapterNode(Node):
@@ -129,6 +132,15 @@ class Robotiq2fAdapterNode(Node):
                 description="Name of the action server."
             )
         )
+        
+        # Create a subscription to the gripper command topic
+        self.create_subscription(GripperCommand,
+                                 '/gripper_command_topic',
+                                 self.gripper_command_topic_callback,
+                                 10)
+        self.get_logger().info("Gripper control via urcap setup done!")
+
+        
 
         try:
 
@@ -227,6 +239,24 @@ class Robotiq2fAdapterNode(Node):
 
         self._normalized_speed_factor = (max_gripper_speed_m_s - min_gripper_speed_m_s) / 255
         self._normalized_speed_baseline = min_gripper_speed_m_s
+
+    def gripper_command_topic_callback(self, msg: GripperCommand):
+        grip_width = float(msg.position)
+        max_effort = float(msg.max_effort)
+        self.get_logger().info(f"Received gripper command topic: width={grip_width:.3f} m, effort={max_effort:.1f} N")
+
+        # Create a dummy goal handle to simulate the action server
+        class DummyGoalHandle:
+            def publish_feedback(self, feedback): pass
+            def succeed(self): pass
+            def abort(self): pass
+
+        # Call the gripper action directly
+        self.__move_gripper_to_grip_width(
+            goal_handle=DummyGoalHandle(),
+            grip_width_m=grip_width,
+            max_effort_N=max_effort
+        )
 
     def __newton_value_from_normalized_effort(self, normalized_value: int) -> float:
         """
