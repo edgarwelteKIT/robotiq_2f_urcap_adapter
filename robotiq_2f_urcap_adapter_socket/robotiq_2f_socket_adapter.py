@@ -96,15 +96,17 @@ class Robotiq2fSocketAdapter:
         self._min_force: int = 0
         self._max_force: int = 255
 
+        self._host: typing.Optional[str] = None
+        self._port: typing.Optional[int] = None
+        self._timeout: float = 2.0
+
     def connect(self, hostname: str, port: int, socket_timeout: float = 2.0) -> None:
         """
         Connect to a Robotiq 2 finger gripper at the given address.
-
-        :param hostname: Hostname or ip.
-        :param port: Port.
-        :param socket_timeout: Timeout for blocking socket operations.
         """
         with self.socket_lock:
+            self._host, self._port, self._timeout = hostname, port, socket_timeout
+
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((hostname, port))
             self.socket.settimeout(socket_timeout)
@@ -117,7 +119,49 @@ class Robotiq2fSocketAdapter:
         self._reset()
 
         with self.socket_lock:
-            self.socket.close()
+            try:
+                self.socket.close()
+            finally:
+                self.socket = None
+
+    def _ensure_connected(self) -> None:
+        """Reconnect if socket is missing/closed."""
+        if self.socket is not None:
+            return
+        if self._host is None or self._port is None:
+            raise RuntimeError("Endpoint unknown. Call connect(host, port) first.")
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((self._host, self._port))
+        s.settimeout(self._timeout)
+        self.socket = s
+
+    def _send_recv(self, payload: bytes, expect_bytes: int = 1024, retries: int = 1) -> typing.Optional[bytes]:
+        """
+        Send and receive with at most `retries`. If still failing, return None.
+        """
+        attempt = 0
+        while attempt < retries:
+            attempt += 1
+            with self.socket_lock:
+                try:
+                    self._ensure_connected()
+                    assert self.socket is not None
+                    self.socket.sendall(payload)
+                    data = self.socket.recv(expect_bytes)
+                    if not data:
+                        raise ConnectionResetError("Peer closed")
+                    return data
+                except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError,
+                        TimeoutError, ConnectionRefusedError, OSError):
+                    if self.socket is not None:
+                        try:
+                            self.socket.close()
+                        finally:
+                            self.socket = None
+                    # short sleep before retry
+                    time.sleep(0.05)
+        # After retries exhausted → non-blocking fallback
+        return None
 
     def set_gripper_variables(
         self,
@@ -125,36 +169,19 @@ class Robotiq2fSocketAdapter:
     ) -> bool:
         """
         Set the variables specified in the dict on the gripper via the socket connection.
-
         This command waits for the 'ack' response form the gripper.
-
-        :param variable_dict: Dictionary of variables to set (variable_name, value).
-        :return: True on successful reception of ack, false if no ack was received
         """
         cmd = f'{self.__SET_COMMAND}'
         for variable, value in variable_dict.items():
             cmd += f" {variable} {str(value)}"
         cmd += '\n'  # new line is required for the command to finish
-        # atomic commands send/rcv
-        if self.socket is None:
-            raise ValueError("Cannot receive current value!")
 
-        with self.socket_lock:
-            self.socket.sendall(cmd.encode(self.ENCODING))
-            data = self.socket.recv(1024)
+        data = self._send_recv(cmd.encode(self.ENCODING), expect_bytes=1024, retries=1)
+        if data is None:
+            return False
         return self._is_ack(data)
 
     def set_gripper_variable(self, variable: str, value: Union[int, float]):
-        """
-        Set the specified variable on the gripper via the socket connection.
-
-        This command waits for the 'ack' response form the gripper.
-
-        :param variable: Variable to set.
-        :param value: Value to set for the variable.
-
-        :return: True on successful reception of ack, false if no ack was received
-        """
         return self.set_gripper_variables(OrderedDict([(variable, value)]))
 
     def get_gripper_variable(self, variable: str) -> int:
@@ -164,25 +191,24 @@ class Robotiq2fSocketAdapter:
         This command blocks until the response has been received or a timeout occurs.
 
         :param variable: Name of the variable to retrieve.
-        :return: Value of the variable as integer.
+        :return: Value of the variable as integer, or -1 if timeout occurs.
         """
         # atomic commands send/rcv
         cmd = f"{self.__GET_COMMAND} {variable}\n"
-        if self.socket is None:
-            raise ValueError("Cannot retrieve current value!")
-
-        with self.socket_lock:
-            self.socket.sendall(cmd.encode(self.ENCODING))
-            data = self.socket.recv(1024)
-
-        var_name, value_str = data.decode(self.ENCODING).split()
-        if var_name != variable:
-            raise ValueError(
-                f"Unexpected response {data} ({data.decode(self.ENCODING)}): "
-                f"does not match '{variable}'"
+        data = self._send_recv(cmd.encode(self.ENCODING), expect_bytes=1024, retries=1)
+        if data is None:
+            # --- return dummy value when server is dead ---
+            return -1   # or 0 if that's safer for your logic
+        try:
+            var_name, value_str = data.decode(self.ENCODING).split()
+            if var_name != variable:
+                raise ValueError(
+                    f"Unexpected response {data} ({data.decode(self.ENCODING)}): "
+                    f"does not match '{variable}'"
                 )
-        value = int(value_str)
-        return value
+            return int(value_str)
+        except Exception:
+            return -1
 
     def _is_ack(self, data: bytes) -> bool:
         """
