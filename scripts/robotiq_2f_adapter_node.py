@@ -135,7 +135,7 @@ class Robotiq2fAdapterNode(Node):
         
         # Create a subscription to the gripper command topic
         self.create_subscription(GripperCommand,
-                                 '/gripper_command_topic',
+                                 'robotiq_2f_urcap_adapter/gripper_command_topic',
                                  self.gripper_command_topic_callback,
                                  10)
         self.get_logger().info("Gripper control via urcap setup done!")
@@ -241,22 +241,28 @@ class Robotiq2fAdapterNode(Node):
         self._normalized_speed_baseline = min_gripper_speed_m_s
 
     def gripper_command_topic_callback(self, msg: GripperCommand):
-        grip_width = float(msg.position)
+        position = float(msg.position)
         max_effort = float(msg.max_effort)
-        self.get_logger().info(f"Received gripper command topic: width={grip_width:.3f} m, effort={max_effort:.1f} N")
+        self.get_logger().info(f"Received gripper command topic: position={position:.3f}, max_effort={max_effort:.1f}")
 
         # Create a dummy goal handle to simulate the action server
         class DummyGoalHandle:
             def publish_feedback(self, feedback): pass
             def succeed(self): pass
             def abort(self): pass
-
-        # Call the gripper action directly
-        self.__move_gripper_to_grip_width(
+        
+        return self.__move_gripper_to_joint_position(
             goal_handle=DummyGoalHandle(),
-            grip_width_m=grip_width,
+            joint_position_rad=position,
             max_effort_N=max_effort
         )
+
+        # Call the gripper action directly
+        # self.__move_gripper_to_grip_width(
+        #     goal_handle=DummyGoalHandle(),
+        #     grip_width_m=position,
+        #     max_effort_N=max_effort
+        # )
 
     def __newton_value_from_normalized_effort(self, normalized_value: int) -> float:
         """
