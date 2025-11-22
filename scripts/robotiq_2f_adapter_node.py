@@ -695,7 +695,7 @@ class Robotiq2fAdapterNode(Node):
                 ObjectStatus.STOPPED_INNER_OBJECT,
                 ObjectStatus.STOPPED_OUTER_OBJECT
         }:
-            goal_handle.abort()
+            goal_handle.succeed()
 
             return GripperCommandAction.Result(
                 position=self.__m_value_from_normalized_grip_width(self.gripper_adapter.position),
