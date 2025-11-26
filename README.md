@@ -7,6 +7,8 @@ For communicating with that interface we use work from SDU's `ur_rtde`
 [repository](https://gitlab.com/sdurobotics/ur_rtde/blob/master/doc/_static/robotiq_gripper.py)
 licensed under the MIT license.
 
+> **Important**: Make sure the security setting on UR controller are not blocking incoming traffic on port 63352 (Settings -> Security -> General). 
+
 The overall idea is as follows:
 
 1) Mount the gripper to the UR robot of your choice and connect it via
