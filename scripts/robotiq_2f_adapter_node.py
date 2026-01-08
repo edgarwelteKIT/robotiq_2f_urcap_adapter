@@ -133,6 +133,16 @@ class Robotiq2fAdapterNode(Node):
             )
         )
         
+        self.declare_parameter(
+            name="auto_calibrate",
+            value=True,
+            descriptor=ParameterDescriptor(
+                name="auto_calibrate",
+                type=ParameterType.PARAMETER_BOOL,
+                description="Whether to auto calibrate the gripper on activation."
+            )
+        )
+        
         # Create a subscription to the gripper command topic
         self.create_subscription(GripperCommand,
                                  'robotiq_2f_urcap_adapter/gripper_command_topic',
@@ -181,6 +191,10 @@ class Robotiq2fAdapterNode(Node):
             action_server_name: Optional[str] = self.get_parameter("action_server_name").value
             if action_server_name is None:
                 raise ParameterUninitializedException(parameter_name="action_server_name")
+            
+            auto_calibrate: Optional[bool] = self.get_parameter("auto_calibrate").value
+            if auto_calibrate is None:
+                raise ParameterUninitializedException(parameter_name="auto_calibrate")
 
         except ParameterNotDeclaredException as exc:
             self.get_logger().error(f"Parameter not declated: {exc}")
@@ -217,7 +231,7 @@ class Robotiq2fAdapterNode(Node):
 
         self.get_logger().info(f"Activate Gripper on {robot_ip}:{robot_port}!")
 
-        self.gripper_adapter.activate(auto_calibrate=True)
+        self.gripper_adapter.activate(auto_calibrate=auto_calibrate)
 
         self.get_logger().info(f"Activated Gripper on {robot_ip}:{robot_port}!")
 

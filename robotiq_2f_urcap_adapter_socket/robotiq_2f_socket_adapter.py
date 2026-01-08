@@ -334,19 +334,19 @@ class Robotiq2fSocketAdapter:
         # first try to open in case we are holding an object
         (position, status) = self.move_and_wait_for_pos(self.open_position, 64, 1)
         if ObjectStatus(status) != ObjectStatus.AT_DEST:
-            raise RuntimeError(f"Calibration failed opening to start: {str(status)}")
+            print(f"Calibration failed opening to start: {str(status)}")
 
         # try to close as far as possible, and record the number
         (position, status) = self.move_and_wait_for_pos(self.closed_position, 64, 1)
         if ObjectStatus(status) != ObjectStatus.AT_DEST:
-            raise RuntimeError(f"Calibration failed because of an object: {str(status)}")
+            print(f"Calibration failed because of an object: {str(status)}")
         assert position <= self._max_position
         self._max_position = position
 
         # try to open as far as possible, and record the number
         (position, status) = self.move_and_wait_for_pos(self.open_position, 64, 1)
         if ObjectStatus(status) != ObjectStatus.AT_DEST:
-            raise RuntimeError(f"Calibration failed because of an object: {str(status)}")
+            print(f"Calibration failed because of an object: {str(status)}")
         assert position >= self._min_position
         self._min_position = position
 
