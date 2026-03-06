@@ -29,6 +29,7 @@ from rclpy.action import ActionServer
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node, ParameterDescriptor, ParameterType,\
     ParameterNotDeclaredException, ParameterUninitializedException
+from rclpy.callback_groups import ReentrantCallbackGroup, MutuallyExclusiveCallbackGroup
 
 from control_msgs.action import GripperCommand as GripperCommandAction
 from control_msgs.msg import GripperCommand
@@ -49,6 +50,10 @@ class Robotiq2fAdapterNode(Node):
         super().__init__("robotiq_2f_urcap_adapter")
 
         self.get_logger().info("Gripper control via urcap setting up!")
+        
+        self._action_cbg = ReentrantCallbackGroup()
+        self._timer_cbg = MutuallyExclusiveCallbackGroup()
+        self._topic_cbg = MutuallyExclusiveCallbackGroup()
 
         self.declare_parameter(
             name="robot_ip",
@@ -144,10 +149,13 @@ class Robotiq2fAdapterNode(Node):
         )
         
         # Create a subscription to the gripper command topic
-        self.create_subscription(GripperCommand,
-                                 'robotiq_2f_urcap_adapter/gripper_command_topic',
-                                 self.gripper_command_topic_callback,
-                                 10)
+        self.create_subscription(
+            GripperCommand,
+            'robotiq_2f_urcap_adapter/gripper_command_topic',
+            self.gripper_command_topic_callback,
+            10,
+            callback_group=self._topic_cbg,
+        )
         self.get_logger().info("Gripper control via urcap setup done!")
 
         
@@ -207,7 +215,8 @@ class Robotiq2fAdapterNode(Node):
             self,
             GripperCommandAction,
             action_server_name,
-            self.execute_callback
+            self.execute_callback,
+            callback_group=self._action_cbg,
         )
 
         self.publisher_ = self.create_publisher(JointState, 'joint_states', 10)
@@ -220,7 +229,11 @@ class Robotiq2fAdapterNode(Node):
             'robotiq_85_right_finger_tip_joint'
         ]
 
-        self.timer = self.create_timer(0.1, self.timer_callback)
+        self.timer = self.create_timer(
+            0.1,
+            self.timer_callback,
+            callback_group=self._timer_cbg,
+        )
         
         self.get_logger().info(f"Connecting to URCAP on {robot_ip}:{robot_port}!")
 
