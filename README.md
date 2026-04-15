@@ -121,3 +121,34 @@ You can also start both command with configured parameters with this launch file
 ```
 ros2 launch robotiq_2f_urcap_adapter robotiq_2f85_urcap_adapter+mock_launch.py
 ```
+
+
+
+## Trouble shooting
+
+If the gripper does not get activated (open-close movement) at startup check the log, if the following error appears the reason is that the urcap returns the string "ACT ?" which means the gripper can not be communicated to.
+
+```bash
+Traceback (most recent call last):
+[robotiq_2f_adapter_node.py-1]   File "/home/ws/install/robotiq_2f_urcap_adapter/lib/robotiq_2f_urcap_adapter/robotiq_2f_adapter_node.py", line 821, in <module>
+[robotiq_2f_adapter_node.py-1]     main()
+[robotiq_2f_adapter_node.py-1]   File "/home/ws/install/robotiq_2f_urcap_adapter/lib/robotiq_2f_urcap_adapter/robotiq_2f_adapter_node.py", line 805, in main
+[robotiq_2f_adapter_node.py-1]     gripper_control_adapter = Robotiq2fAdapterNode()
+[robotiq_2f_adapter_node.py-1]   File "/home/ws/install/robotiq_2f_urcap_adapter/lib/robotiq_2f_urcap_adapter/robotiq_2f_adapter_node.py", line 247, in __init__
+[robotiq_2f_adapter_node.py-1]     self.gripper_adapter.activate(auto_calibrate=auto_calibrate)
+[robotiq_2f_adapter_node.py-1]   File "/home/ws/install/robotiq_2f_urcap_adapter/local/lib/python3.10/dist-packages/robotiq_2f_urcap_adapter_socket/robotiq_2f_socket_adapter.py", line 242, in activate
+[robotiq_2f_adapter_node.py-1]     if not self.is_active:
+[robotiq_2f_adapter_node.py-1]   File "/home/ws/install/robotiq_2f_urcap_adapter/local/lib/python3.10/dist-packages/robotiq_2f_urcap_adapter_socket/robotiq_2f_socket_adapter.py", line 269, in is_active
+[robotiq_2f_adapter_node.py-1]     return GripperStatus(status) == GripperStatus.ACTIVE
+[robotiq_2f_adapter_node.py-1]   File "/usr/lib/python3.10/enum.py", line 385, in __call__
+[robotiq_2f_adapter_node.py-1]     return cls.__new__(cls, value)
+[robotiq_2f_adapter_node.py-1]   File "/usr/lib/python3.10/enum.py", line 710, in __new__
+[robotiq_2f_adapter_node.py-1]     raise ve_exc
+[robotiq_2f_adapter_node.py-1] ValueError: -1 is not a valid GripperStatus
+```
+
+**Solution:**
+
+Please verify in the teach pendant that the gripper is configured at ID1 (of 4). Otherwise the ROS2 adapter cannot work.
+
+![image](docs/urcap_gripper_id.png)
